@@ -50,7 +50,7 @@
     <h2>3. Methodology & Baseline</h2>
     <p>The core objective is a binary classification task: predicting if a page possesses active click-capture potential (<code>has_clicks = True</code>). We established a transparent business heuristic baseline (Impressions > 500 and Position > 10). To prevent memorization and ensure the model learns generalizable principles, validation was conducted using a strict 5-Fold Grouped Cross-Validation (<code>GroupKFold</code>) keyed on the page ID.</p>
 
-    <!-- 4. Results -->
+<!-- 4. Results -->
     <h2>4. Results (Model vs. Baseline)</h2>
     <p>Both models were evaluated on the exact same unseen data splits. The Random Forest model demonstrated superior discrimination capability without relying on domain memorization.</p>
     <table>
@@ -77,6 +77,14 @@
             </tr>
         </tbody>
     </table>
+    <p><em>*Context: The underlying natural base rate for pages capturing clicks in this sample was evaluated alongside the baseline. The 75.0% accuracy represents a true discriminatory learning lift over the majority-class distribution.</em></p>
+
+    <br>
+    <h3>Feature Importance (Model Interpretability)</h3>
+    <p>To ensure the model is acting on logical triage signals rather than spurious noise, we extracted the feature importances. The model relies heavily on pure physical visibility (Impressions and Position) to make its decisions.</p>
+    
+    <!-- Assuming your HTML is in /docs and the image is in /work/figures/ -->
+    <img src="../work/figures/capstone_feature_importance.png" alt="Feature Importance Chart showing Impressions and Position as leading indicators" style="max-width: 100%; height: auto; border-radius: 6px; border: 1px solid #e2e8f0; margin: 15px 0;">
 
     <!-- 5. Limitations -->
     <h2>5. Limitations & Honest Framing</h2>
