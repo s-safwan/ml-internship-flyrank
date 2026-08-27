@@ -11,11 +11,12 @@
         h1 { font-size: 2.2rem; color: var(--primary); margin-bottom: 10px; line-height: 1.3; }
         .meta { font-size: 0.95rem; color: #64748b; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
         h2 { font-size: 1.4rem; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 5px; margin-top: 40px; }
+        h3 { font-size: 1.15rem; color: var(--accent); margin-top: 25px; }
         .abstract-box { background-color: #f1f5f9; border-left: 4px solid var(--accent); padding: 20px; margin: 25px 0; border-radius: 0 6px 6px 0; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.95rem; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
         th { background-color: #f8fafc; color: var(--primary); font-weight: 600; }
-        img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; margin: 20px 0; }
+        img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; margin: 20px 0; display: block; }
         footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 0.9rem; color: #64748b; }
         a { color: var(--accent); text-decoration: none; font-weight: 500; }
         a:hover { text-decoration: underline; }
@@ -43,7 +44,7 @@
 
     <!-- 2. Data Scope -->
     <h2>2. Data Scope & Safety Standards</h2>
-    <p>We utilized a 30,000-row randomized sample from the March 2026 FlyRank warehouse partition. To ensure rigorous integrity, <code>client_hash_id</code> and <code>content_hash_id</code> were retained exclusively for cross-validation grouping, never as predictive features. Sibling target-leakage columns (such as <code>sessions_organic</code>) were strictly excluded from the training data.</p>
+    <p>We utilized a 30,000-row randomized sample from the FlyRank warehouse partition. To ensure rigorous integrity, <code>client_hash_id</code> and <code>content_hash_id</code> were retained exclusively for cross-validation grouping, never as predictive features. Sibling target-leakage columns (such as <code>sessions_organic</code>) were strictly excluded from the training data.</p>
 
     <!-- 3. Methodology -->
     <h2>3. Methodology & Baseline</h2>
@@ -79,7 +80,7 @@
     
     <p><em>Empirical finding: The natural base rate of clicks in this sample is 49.5%. The heuristic baseline achieves a high precision (0.731) but acts as an overly conservative filter, resulting in a global accuracy (0.538) that barely beats a random coin flip. The Random Forest model provides a vastly superior global fit (0.748 accuracy) while maintaining highly competitive triage precision (0.714), successfully identifying thousands of valid refresh opportunities the rigid heuristic missed.</em></p>
 
-    <img src="https://raw.githubusercontent.com/s-safwan/ml-internship-flyrank/main/work/figures/capstone_feature_importance.png" alt="Feature Importance Chart showing Impressions and Position as leading indicators">
+    <img src="capstone_feature_importance.png" alt="Feature Importance Chart showing Impressions and Position as leading indicators">
     
     <p>The feature importance analysis (above) confirms the model relies heavily on pure physical visibility (Impressions and Position) to drive its predictions, rather than memorizing spurious noise.</p>
 
@@ -99,6 +100,48 @@
         <li><strong><code>EXPAND_CONTENT</code>:</strong> Strong rank (Top 10) but low GA4 sessions. Action to expand content depth, multimedia, and structured data.</li>
         <li><strong><code>HOLD</code>:</strong> Insufficient visibility or stable baseline performance. Exclude from the immediate editorial sprint.</li>
     </ol>
+
+    <img src="playbook_actions_distribution.png" alt="Bar chart showing the distribution of playbook actions, with HOLD being the vast majority">
+    
+    <p><em>Takeaway: The triage model effectively filters out the noise. The vast majority of the portfolio requires no intervention (Hold), isolating the critical minority of pages that offer high-ROI refresh opportunities.</em></p>
+
+    <h3>Action Queue Output (Sample)</h3>
+    <p>The final operational artifact delivered to the editorial team is the prioritized queue. Below is a sample of the top-priority targets isolated by the model:</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>content_hash_id</th>
+                <th>max_impressions</th>
+                <th>avg_position</th>
+                <th>max_sessions</th>
+                <th>recommended_action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>...edeb93b7c4f</code></td>
+                <td>24,577</td>
+                <td>18.61</td>
+                <td>216</td>
+                <td><span style="color: #0f766e; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
+            </tr>
+            <tr>
+                <td><code>...753806d7af3</code></td>
+                <td>15,522</td>
+                <td>14.39</td>
+                <td>63</td>
+                <td><span style="color: #0f766e; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
+            </tr>
+            <tr>
+                <td><code>...52cf3d5988c07</code></td>
+                <td>15,394</td>
+                <td>15.00</td>
+                <td>49</td>
+                <td><span style="color: #0f766e; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
+            </tr>
+        </tbody>
+    </table>
 
     <!-- 7. Reproducibility -->
     <h2>7. Reproducibility</h2>
