@@ -27,37 +27,41 @@
 <div class="container">
     <h1>Automated Editorial Triage: Prioritizing Search Visibility with Machine Learning</h1>
     <div class="meta">
+        <strong>Author:</strong> Syed Safwan Hashmi &bull; 
         <strong>Lane:</strong> Applied Search Intelligence &bull; 
-        <strong>Dataset:</strong> 30,000-Row Sample (FlyRank Warehouse) &bull; 
-        <strong>Method:</strong> Random Forest Classifier
+        <strong>Dataset:</strong> FlyRank Warehouse Sample
     </div>
 
     <!-- 0. Abstract -->
     <div class="abstract-box">
-        <strong>Abstract:</strong> 
-        Digital publishers face severe organic traffic stagnation across massive content inventories. This study models contemporaneous search click potential to intelligently triage existing pages for editorial intervention. Using a 30,000-row representative sample extracted from the 79M-row FlyRank warehouse, we trained a Random Forest model on physical visibility signals. Validated inside a strict 5-fold grouped split against a rigid heuristic baseline, the model delivered a highly competitive triage precision (0.714) while drastically improving overall accuracy (0.748 vs 0.538). The resulting artifact is a decision-support playbook that operationalizes these probabilities into a ranked queue to maximize human editorial ROI.
+        <strong>0. Abstract</strong><br>
+        Digital publishers face severe organic traffic stagnation and need to systematically identify which decaying pages possess the active potential to capture clicks if refreshed. To answer this, we analyzed a 30,000-row representative sample of daily page-level telemetry extracted from the 79-million-row FlyRank warehouse. We trained a Random Forest classifier on physical visibility signals and evaluated it alongside a heuristic baseline using strict 5-fold grouped cross-validation. The model achieved a highly competitive triage precision of 0.714 and superior overall accuracy (0.748) compared to the rigid heuristic baseline. This output is structured as an actionable decision-support playbook that dynamically routes pages into a ranked queue to maximize human editorial ROI.
     </div>
 
-    <!-- 1. Problem Formulation -->
-    <h2>1. Problem Formulation</h2>
-    <p>For content teams managing large portfolios, simplistic heuristic filters (e.g., "refresh all pages ranking on page 2") create either too many false positives or miss thousands of viable opportunities. This project builds a quantitative classification model to answer a specific operational question: <em>Based on current physical visibility, does this page possess the active potential to capture clicks?</em> The goal is not to predict Google's algorithm, but to prioritize high-upside refresh opportunities for human editors.</p>
+    <!-- 1. Problem framing -->
+    <h2>1. Problem Framing</h2>
+    <p>For content teams managing large portfolios, simplistic heuristic filters (e.g., "refresh all pages ranking on page 2") create either too many false positives or miss thousands of viable opportunities. The unit of analysis is the daily page. The cost of a wrong call is wasted editorial labor on dead pages. This project builds a quantitative classification model to answer a specific operational question: <em>Based on current physical visibility, does this page possess the active potential to capture clicks?</em> Data and ML automate this triage at a scale humans cannot process manually.</p>
 
-    <!-- 2. Data Scope -->
-    <h2>2. Data Scope & Safety Standards</h2>
-    <p>We utilized a 30,000-row randomized sample from the FlyRank warehouse partition. To ensure rigorous integrity, <code>client_hash_id</code> and <code>content_hash_id</code> were retained exclusively for cross-validation grouping, never as predictive features. Sibling target-leakage columns (such as <code>sessions_organic</code>) were strictly excluded from the training data.</p>
+    <!-- 2. Data safety -->
+    <h2>2. Data Safety</h2>
+    <p>We utilized a 30,000-row randomized sample from the FlyRank warehouse partition. To ensure strict public safety and avoid leakage, pseudonymous entity IDs (<code>client_hash_id</code> and <code>content_hash_id</code>) were deliberately retained exclusively for cross-validation grouping and never used as predictive features. Sibling target-leakage columns (specifically <code>sessions_organic</code>) were permanently excluded from the training set.</p>
 
-    <!-- 3. Methodology -->
-    <h2>3. Methodology & Baseline</h2>
-    <p>We established a binary classification target to identify click presence (<code>has_clicks = True</code>). We benchmarked a Random Forest Classifier against a transparent business baseline (<code>Impressions > 500 AND Position > 10</code>). To prevent domain memorization and ensure the model learns generalizable principles, both the baseline and the model were evaluated simultaneously inside a strict 5-Fold Grouped Cross-Validation (<code>GroupKFold</code>) keyed on the page ID.</p>
+    <!-- 3. Baseline -->
+    <h2>3. Baseline</h2>
+    <p>We established a transparent business heuristic baseline (<code>Impressions > 500 AND Position > 10</code>) representing the standard rule an SEO manager might build first. It is a fair comparison because it utilizes the exact same visibility metrics available to the model. On the grouped validation split, this rule achieved a precision of 0.731 but suffered from an overly conservative global accuracy of just 0.538 (barely outperforming the 49.5% base rate).</p>
 
-    <!-- 4. Results -->
-    <h2>4. Results & Feature Importance</h2>
-    <p>To ensure rigorous methodological alignment, we evaluated both models inside the exact same cross-validation loop. We report Precision (the critical metric for a triage/ranking queue) alongside Accuracy and the natural Base Rate.</p>
+    <!-- 4. Model / analysis -->
+    <h2>4. Model / Analysis</h2>
+    <p>We framed the task as binary classification, defining the target proxy in one sentence: <em>Does the page register at least one organic click during the observation window (<code>has_clicks = True</code>)?</em> We selected a Random Forest Classifier because it captures non-linear thresholds in visibility metrics without requiring extensive feature scaling. The exact feature list includes <code>gsc_impressions</code>, <code>gsc_avg_position</code>, <code>ga4_sessions</code>, and <code>scroll_events</code>.</p>
+
+    <!-- 5. Evaluation -->
+    <h2>5. Evaluation</h2>
+    <p>To prevent domain memorization, both the baseline and the model were evaluated simultaneously inside a strict 5-Fold Grouped Cross-Validation (<code>GroupKFold</code>) keyed on <code>content_hash_id</code>.</p>
     <table>
         <thead>
             <tr>
                 <th>Strategy</th>
-                <th>Validation Design</th>
+                <th>Validation Split</th>
                 <th>Precision</th>
                 <th>Accuracy</th>
             </tr>
@@ -65,49 +69,38 @@
         <tbody>
             <tr>
                 <td>Rule-Based Baseline</td>
-                <td>5-Fold Grouped Split</td>
+                <td>5-Fold Grouped</td>
                 <td>0.731</td>
                 <td>0.538</td>
             </tr>
             <tr>
                 <td><strong>Random Forest ML</strong></td>
-                <td><strong>5-Fold Grouped Split</strong></td>
+                <td><strong>5-Fold Grouped</strong></td>
                 <td><strong>0.714</strong></td>
                 <td><strong>0.748</strong></td>
             </tr>
         </tbody>
     </table>
     
-    <p><em>Empirical finding: The natural base rate of clicks in this sample is 49.5%. The heuristic baseline achieves a high precision (0.731) but acts as an overly conservative filter, resulting in a global accuracy (0.538) that barely beats a random coin flip. The Random Forest model provides a vastly superior global fit (0.748 accuracy) while maintaining highly competitive triage precision (0.714), successfully identifying thousands of valid refresh opportunities the rigid heuristic missed.</em></p>
+    <p><em>Error Analysis:</em> The natural base rate of clicks in this sample is 49.5%. The Random Forest model provides a vastly superior global fit (0.748 accuracy) while maintaining highly competitive triage precision (0.714). The primary errors are false positives occurring on high-volume generic queries with naturally zero-click intent, which the model misinterprets as opportunity.</p>
 
     <img src="capstone_feature_importance.png" alt="Feature Importance Chart showing Impressions and Position as leading indicators">
-    
-    <p>The feature importance analysis (above) confirms the model relies heavily on pure physical visibility (Impressions and Position) to drive its predictions, rather than memorizing spurious noise.</p>
+    <p><em>Interpretation:</em> The feature importance analysis confirms the model relies heavily on pure physical visibility (Impressions and Position) to drive its predictions, successfully ignoring weaker engagement signals. A well-understood finding here is that physical visibility dictates opportunity far more than prior session depth.</p>
 
-    <!-- 5. Limitations -->
-    <h2>5. Limitations & Honest Framing</h2>
-    <ul>
-        <li><strong>Construct Validity:</strong> This model classifies contemporaneous visibility potential to facilitate triage; it does not forecast future time-series content decay.</li>
-        <li><strong>Intent Blindness:</strong> The model evaluates physical metrics but cannot parse semantic search intent. High-volume generic queries with naturally zero-click intent will result in false positives.</li>
-        <li><strong>Causality:</strong> This is an observational decision-support tool, not a causal inference engine.</li>
-    </ul>
-
-    <!-- 6. Recommendations -->
-    <h2>6. Ranked Recommendations (Action Playbook)</h2>
-    <p>Based on the learned thresholds, pages are dynamically sorted into a 3-tier action queue for the editorial team:</p>
+    <!-- 6. Ranked recommendations -->
+    <h2>6. Ranked Recommendations</h2>
+    <p>Based on the model, pages are dynamically sorted into a 3-tier action playbook that a FlyRank editor can use immediately:</p>
     <ol>
-        <li><strong><code>REFRESH_FOR_CTR</code>:</strong> High impressions (>1,000) drifting to positions 11–30. Immediate action to optimize meta descriptions, titles, and snippet targeting.</li>
-        <li><strong><code>EXPAND_CONTENT</code>:</strong> Strong rank (Top 10) but low GA4 sessions. Action to expand content depth, multimedia, and structured data.</li>
-        <li><strong><code>HOLD</code>:</strong> Insufficient visibility or stable baseline performance. Exclude from the immediate editorial sprint.</li>
+        <li><strong><code>REFRESH_FOR_CTR</code>:</strong> High impressions (>1,000) drifting to positions 11–30. Action: Optimize meta descriptions and titles.</li>
+        <li><strong><code>EXPAND_CONTENT</code>:</strong> Strong rank (Top 10) but low GA4 sessions. Action: Expand content depth and multimedia.</li>
+        <li><strong><code>HOLD</code>:</strong> Stable baseline performance. Do not touch.</li>
     </ol>
 
     <img src="playbook_actions_distribution.png" alt="Bar chart showing the distribution of playbook actions, with HOLD being the vast majority">
     
-    <p><em>Takeaway: The triage model effectively filters out the noise. The vast majority of the portfolio requires no intervention (Hold), isolating the critical minority of pages that offer high-ROI refresh opportunities.</em></p>
+    <p><strong>Confidence & Limits:</strong> We are highly confident in the model's ability to filter out "Hold" noise. However, this is an observational decision-support tool, not a causal forecasting engine. It classifies contemporaneous visibility potential and does not explicitly forecast future time-series decay.</p>
 
-    <h3>Action Queue Output (Sample)</h3>
-    <p>The final operational artifact delivered to the editorial team is the prioritized queue. Below is a sample of the top-priority targets isolated by the model:</p>
-    
+    <h3>Sample Triage Queue</h3>
     <table>
         <thead>
             <tr>
@@ -133,24 +126,18 @@
                 <td>63</td>
                 <td><span style="color: #0f766e; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
             </tr>
-            <tr>
-                <td><code>...52cf3d5988c07</code></td>
-                <td>15,394</td>
-                <td>15.00</td>
-                <td>49</td>
-                <td><span style="color: #0f766e; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
-            </tr>
         </tbody>
     </table>
 
     <!-- 7. Reproducibility -->
     <h2>7. Reproducibility</h2>
-    <p>This entire study, including data pipelines, split logic, and leakage audits, is fully reproducible. The execution environments, seeds, and documented Jupyter notebooks are available in the public project repository.</p>
+    <p>This entire study is fully reproducible. The execution environments, data extraction queries, grouping logic, and random seeds (<code>random_state=42</code>) are committed in the public Jupyter notebooks within the project repository.</p>
+    <p><strong>Repository:</strong> <a href="https://github.com/s-safwan/ml-internship-flyrank" target="_blank">github.com/s-safwan/ml-internship-flyrank</a></p>
 
-    <!-- 8. Acknowledgments -->
+    <!-- 8. Acknowledgments & data credit -->
     <footer>
         <h2>8. Acknowledgments & Data Credit</h2>
-        <p>This research was built on the FlyRank ML Internship dataset. We sincerely thank <a href="https://flyrank.ai" target="_blank" rel="noopener noreferrer">https://flyrank.ai</a> for providing the anonymized, large-scale search intelligence data that made this empirical study possible.</p>
+        <p>Built on the FlyRank ML Internship dataset: <a href="https://flyrank.ai" target="_blank" rel="noopener noreferrer">https://flyrank.ai</a></p>
     </footer>
 </div>
 
