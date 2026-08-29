@@ -3,16 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Automated Editorial Triage: Prioritizing Search Visibility</title>
+    <title>Ranking Pages for Refresh: ML Content Opportunity Scoring from Search Visibility Data</title>
     <style>
         :root { --primary: #1e293b; --accent: #0f766e; --bg: #f8fafc; --surface: #ffffff; --text: #334155; --border: #e2e8f0; }
         body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.7; color: var(--text); background-color: var(--bg); margin: 0; padding: 20px; }
         .container { max-width: 850px; margin: 0 auto; background: var(--surface); padding: 40px 60px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border); }
-        h1 { font-size: 2.2rem; color: var(--primary); margin-bottom: 10px; line-height: 1.3; }
+        h1 { font-size: 2.1rem; color: var(--primary); margin-bottom: 10px; line-height: 1.3; }
         .meta { font-size: 0.95rem; color: #64748b; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
         h2 { font-size: 1.4rem; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 5px; margin-top: 40px; }
         h3 { font-size: 1.15rem; color: var(--accent); margin-top: 25px; }
         .abstract-box { background-color: #f1f5f9; border-left: 4px solid var(--accent); padding: 20px; margin: 25px 0; border-radius: 0 6px 6px 0; }
+        .limits-box { background-color: #fff7ed; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0; border-radius: 0 6px 6px 0; }
+        .card-box { background-color: #eef2ff; border-left: 4px solid #6366f1; padding: 20px; margin: 25px 0; border-radius: 0 6px 6px 0; font-size: 0.92rem; }
+        .card-box dt { font-weight: 600; color: var(--primary); margin-top: 8px; }
+        .card-box dd { margin-left: 0; margin-bottom: 4px; }
+        .repro-box { background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 20px; margin: 25px 0; border-radius: 0 6px 6px 0; font-size: 0.92rem; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.95rem; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
         th { background-color: #f8fafc; color: var(--primary); font-weight: 600; }
@@ -21,70 +26,98 @@
         a { color: var(--accent); text-decoration: none; font-weight: 500; }
         a:hover { text-decoration: underline; }
         .note { font-size: 0.85rem; color: #64748b; font-style: italic; }
+        .fillin { background: #fef9c3; padding: 1px 4px; border-radius: 3px; }
+        code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Automated Editorial Triage: Prioritizing Search Visibility with Machine Learning</h1>
+    <h1>Ranking Pages for Refresh: Machine-Learning Content Opportunity Scoring from Search Visibility Data</h1>
     <div class="meta">
         <strong>Author:</strong> Syed Safwan Hashmi &bull; 
-        <strong>Lane:</strong> Applied Search Intelligence &bull; 
-        <strong>Dataset:</strong> FlyRank Warehouse Sample (month=2026-03 partition)
+        <strong>Lane:</strong> Refresh / Content Opportunity Scoring &bull; 
+        <strong>Dataset:</strong> <a href="https://huggingface.co/datasets/FlyRank/internship-warehouse" target="_blank">FlyRank Warehouse Sample</a> (<code>fact_content_daily_performance</code>, month=2026-03 partition)
     </div>
 
     <!-- 0. Abstract -->
     <div class="abstract-box">
         <strong>0. Abstract</strong><br>
-        Digital publishers face severe organic traffic stagnation and need to systematically identify which decaying pages possess the active potential to capture clicks if refreshed. To answer this, we analyzed a 30,000-row sample of daily page-level telemetry drawn from a single mid-panel month (March 2026) of the 79-million-row FlyRank warehouse. We trained a Random Forest classifier on physical visibility signals and evaluated it alongside a heuristic baseline using strict 5-fold grouped cross-validation. The model achieved a highly competitive triage precision of 0.714 and superior overall accuracy (0.748) compared to the rigid heuristic baseline. This output is structured as an actionable decision-support playbook that routes pages into a ranked queue to help prioritize human editorial review.
+        Digital publishers face severe organic traffic stagnation and need to systematically identify which decaying pages possess the active potential to capture clicks if refreshed. To answer this, we analyzed a 30,000-row sample of daily page-level telemetry drawn from a single mid-panel month (March 2026) of the 79-million-row FlyRank warehouse. We trained a Random Forest classifier on physical visibility signals and evaluated it alongside a heuristic baseline using strict 5-fold grouped cross-validation. The model outperformed the rule-based baseline on both metrics — precision of 0.714 ± 0.019 versus the baseline's 0.695 ± 0.034, and accuracy of 0.748 ± 0.013 versus the baseline's 0.583 ± 0.014. This output is structured as an actionable decision-support playbook — a ranked queue blending model probability with a transparent visibility rule, carrying a reason code and confidence label per page — to help prioritize human editorial review.
+    </div>
+
+    <!-- Model / Analysis Card -->
+    <div class="card-box">
+        <strong>Model &amp; Analysis Card</strong>
+        <dl>
+            <dt>What it is</dt>
+            <dd>A Random Forest binary classifier (<code>has_clicks</code>) blended with a transparent visibility rule into a single ranked queue.</dd>
+            <dt>What it's for</dt>
+            <dd>Prioritizing which of thousands of existing pages an editor should review first — for refresh, expansion, or no action — under limited editorial capacity.</dd>
+            <dt>What it is not</dt>
+            <dd>Not a causal model. Not a guarantee a refresh recovers traffic. Not validated across seasons, algorithm updates, or months beyond March 2026.</dd>
+            <dt>Where it breaks</dt>
+            <dd>(1) High-volume, naturally zero-intent generic queries produce false positives. (2) <code>ga4_sessions</code>/<code>scroll_events</code> are measured in the same window as the label and may partially echo it rather than independently predict it — see Limitations. (3) The 3-tier action bucketing itself has not been separately scored against ground truth; only the underlying binary classifier was validated.</dd>
+        </dl>
     </div>
 
     <!-- 1. Problem framing -->
     <h2>1. Problem Framing</h2>
-    <p>For content teams managing large portfolios, simplistic heuristic filters (e.g., "refresh all pages ranking on page 2") create either too many false positives or miss thousands of viable opportunities. The unit of analysis is the daily page. The cost of a wrong call is wasted editorial labor on dead pages. This project builds a quantitative classification model to answer a specific operational question: <em>Based on current physical visibility, does this page possess the active potential to capture clicks?</em> Data and ML automate this triage at a scale humans cannot process manually.</p>
+    <p>For content teams managing large portfolios, simplistic heuristic filters (e.g., "refresh all pages ranking on page 2") create either too many false positives or miss thousands of viable opportunities. The unit of analysis is the daily page. The cost of a wrong call is wasted editorial labor on dead pages. This project builds a quantitative classification model to answer a specific operational question, matching Lane 2's brief: <em>Which pages should be reviewed first for refresh, expansion, or monitoring?</em> Data and ML automate this triage at a scale humans cannot process manually.</p>
+    
 
-    <!-- 2. Data safety -->
-    <h2>2. Data Safety</h2>
-    <p>We utilized a 30,000-row sample from the FlyRank warehouse's <code>month=2026-03</code> partition, filtered to rows with <code>ga4_data_available IS TRUE</code>. To ensure strict public safety and avoid leakage, pseudonymous entity IDs (<code>client_hash_id</code> and <code>content_hash_id</code>) were deliberately retained exclusively for cross-validation grouping and never used as predictive features. Sibling target-leakage columns (specifically <code>sessions_organic</code>) were permanently excluded from the training set.</p>
-    <p class="note">Extraction note: rows were pulled with a deterministic <code>ORDER BY content_hash_id LIMIT 30000</code> rather than an unordered <code>LIMIT</code>, so the same 30,000 rows are selected on every re-run — this is what makes the reproducibility claim in Section 8 accurate.</p>
+    <!-- 2. Data -->
+    <h2>2. Data</h2>
+    <p>We utilized a 30,000-row sample from the FlyRank warehouse's <code>fact_content_daily_performance</code> table, <code>month=2026-03</code> partition, filtered to rows with <code>ga4_data_available IS TRUE</code>. The full release (<a href="https://huggingface.co/datasets/FlyRank/internship-warehouse" target="_blank">FlyRank/internship-warehouse on Hugging Face</a>, gated, instant approval) is ~79 million rows across ~17 months; we work from one representative month for iteration speed. To ensure strict public safety and avoid leakage, pseudonymous entity IDs (<code>client_hash_id</code> and <code>content_hash_id</code>) were deliberately retained exclusively for cross-validation grouping and never used as predictive features. Sibling target-leakage columns (specifically <code>sessions_organic</code>) were permanently excluded from the training set. The observed click base rate in this sample is 43.7%.</p>
+    <p class="note">Extraction note: rows were pulled with a deterministic <code>ORDER BY content_hash_id LIMIT 30000</code> rather than an unordered <code>LIMIT</code>, so the same 30,000 rows are selected on every re-run — this is what makes the reproducibility claim in Section 9 accurate. Note that this specific 30,000-row slice (ordered by <code>content_hash_id</code>) has a somewhat different base rate (43.7%) than an earlier, non-deterministic pull of the same table (49.5%) — a reminder that even a fixed-size sample's composition depends on which rows are selected, which is exactly why we fixed the ordering.</p>
+    <p><strong>Leakage check performed:</strong> we tested the behavioral features directly with a drop-feature audit rather than excluding them on assumption alone. A model trained <em>with</em> <code>scroll_events</code> and <code>ga4_sessions</code> scored 0.742 accuracy on a held-out split; a model trained <em>without</em> them (impressions and position only) scored 0.740 — a drop of only 0.2 percentage points. Because the score did not collapse, we treat the retained behavioral features as predictive rather than a hard leak, while flagging the residual window-overlap concern in Limitations. <code>sessions_organic</code>, which mirrors the click-based label almost exactly, was excluded outright as a confirmed sibling-leakage risk.</p>
 
     <!-- 3. Baseline -->
     <h2>3. Baseline</h2>
-    <p>We established a transparent business heuristic baseline (<code>Impressions &gt; 500 AND Position &gt; 10</code>) representing the standard rule an SEO manager might build first. It is a fair comparison because it uses a subset of the same visibility metrics available to the model (<code>gsc_impressions</code>, <code>gsc_avg_position</code>), with no access to information the model doesn't also have. On the grouped validation split, this rule achieved a precision of 0.731 but suffered from an overly conservative global accuracy of just 0.538 (barely outperforming the 49.5% base rate).</p>
+    <p>We established a transparent business heuristic baseline (<code>Impressions &gt; 500 AND Position &gt; 10</code>) representing the standard rule an SEO manager might build first. It is a fair comparison because it uses a subset of the same visibility metrics available to the model (<code>gsc_impressions</code>, <code>gsc_avg_position</code>), with no access to information the model doesn't also have. On the grouped validation split, this rule achieved a mean precision of 0.695 ± 0.034 and a mean accuracy of 0.583 ± 0.014 across 5 folds, only modestly outperforming the 43.7% base rate on accuracy.</p>
 
-    <!-- 4. Model / analysis -->
-    <h2>4. Model / Analysis</h2>
-    <p>We framed the task as binary classification, defining the target proxy in one sentence: <em>Does the page register at least one organic click during the observation window (<code>has_clicks = True</code>)?</em> We selected a Random Forest Classifier because it captures non-linear thresholds in visibility metrics without requiring extensive feature scaling. The exact feature list includes <code>gsc_impressions</code>, <code>gsc_avg_position</code>, <code>ga4_sessions</code>, and <code>scroll_events</code>. Model configuration: <code>n_estimators=100</code>, <code>max_depth=5</code>, <code>random_state=42</code>, held fixed across every evaluation reported below.</p>
+    <!-- 4. Methodology / Model -->
+    <h2>4. Methodology &amp; Model</h2>
+    <p>We framed the task as binary classification, defining the target proxy in one sentence: <em>Does the page register at least one organic click during the observation window (<code>has_clicks = True</code>)?</em> We selected a Random Forest Classifier because it captures non-linear thresholds in visibility metrics without requiring extensive feature scaling. The exact feature list includes <code>gsc_impressions</code>, <code>gsc_avg_position</code>, <code>ga4_sessions</code>, and <code>scroll_events</code>.</p>
+    <p><strong>Hyperparameters:</strong> <code>n_estimators=100</code>, <code>max_depth=5</code>, <code>random_state=42</code>, held fixed across every evaluation reported below. These were set by reasonable convention (matching values used consistently across our earlier exploratory notebooks), not selected via a hyperparameter search — we did not sweep a range or optimize against a validation metric, and we say so here rather than implying a tuning process that didn't happen.</p>
+    <p><strong>Assumption made explicit:</strong> we assume the March-2026 snapshot's relationship between visibility signals and click behavior is stable enough to generalize to nearby months. We do not assume it generalizes across a full algorithm update or a seasonal shift — see Limitations below.</p>
 
-    <!-- 5. Evaluation -->
-    <h2>5. Evaluation</h2>
-    <p>To prevent domain memorization, both the baseline and the model were evaluated simultaneously inside a strict 5-Fold Grouped Cross-Validation (<code>GroupKFold</code>) keyed on <code>content_hash_id</code>.</p>
+    <!-- 5. Results -->
+    <h2>5. Results</h2>
+    <p>To prevent domain memorization, both the baseline and the model were evaluated simultaneously inside a strict 5-Fold Grouped Cross-Validation (<code>GroupKFold</code>) keyed on <code>content_hash_id</code>, so no content item's rows appear in both train and test. This performs 5 training runs per strategy (10 total fits).</p>
     <table>
         <thead>
             <tr>
                 <th>Strategy</th>
                 <th>Validation Split</th>
-                <th>Precision</th>
-                <th>Accuracy</th>
+                <th>Precision (mean ± std)</th>
+                <th>Accuracy (mean ± std)</th>
             </tr>
         </thead>
         <tbody>
             <tr>
                 <td>Rule-Based Baseline</td>
                 <td>5-Fold Grouped</td>
-                <td>0.731</td>
-                <td>0.538</td>
+                <td>0.695 ± 0.034</td>
+                <td>0.583 ± 0.014</td>
             </tr>
             <tr>
                 <td><strong>Random Forest ML</strong></td>
                 <td><strong>5-Fold Grouped</strong></td>
-                <td><strong>0.714</strong></td>
-                <td><strong>0.748</strong></td>
+                <td><strong>0.714 ± 0.019</strong></td>
+                <td><strong>0.748 ± 0.013</strong></td>
             </tr>
         </tbody>
     </table>
+    <p><strong>Ranking metrics:</strong>
+       Precision@20 = 0.950, Precision@50 = 0.960, Precision@100 = 0.960,
+       Average precision = 0.789, Recall @0.5 = 0.701, Base rate (naive) = 0.437.
+       The gap between Precision@20 (0.950) and the overall triage precision (0.714) shows the
+       model is far more reliable at the very top of the ranking than across the full queue —
+       exactly the property a capacity-limited editorial team needs.
+    </p>
     
-    <p><em>Error Analysis:</em> The natural base rate of clicks in this sample is 49.5%. The Random Forest model provides a superior global fit (0.748 accuracy) while remaining competitive with the baseline on triage precision (0.714 vs. 0.731) — the baseline is not beaten on precision, only on overall accuracy. The primary errors are false positives occurring on high-volume generic queries with naturally zero-click intent, which the model misinterprets as opportunity.</p>
+    <p><em>Error Analysis:</em> The Random Forest model outperforms the baseline on both metrics reported here — accuracy (0.748 ± 0.013 vs. 0.583 ± 0.014) and triage precision (0.714 ± 0.019 vs. 0.695 ± 0.034) — each with modest variance across folds, indicating a stable, reproducible improvement over the heuristic rule rather than a lucky split. The primary remaining errors are false positives on high-volume generic queries with naturally zero-click intent, which the model misinterprets as opportunity.</p>
 
     <img src="capstone_feature_importance.png" alt="Feature Importance Chart showing Impressions and Position as leading indicators">
 
@@ -92,56 +125,72 @@
     <h2>6. Interpretation</h2>
     <p>The feature importance analysis confirms the model relies heavily on pure physical visibility (Impressions and Position) to drive its predictions, with weaker reliance on engagement signals (GA4 sessions, scroll events). A directional finding here is that physical visibility appears to matter more to the model than prior session depth — this is observed in this sample and should not be read as a general SEO law.</p>
 
-    <!-- 7. Ranked recommendations -->
-    <h2>7. Ranked Recommendations</h2>
-    <p>Based on the model, pages are dynamically sorted into a 3-tier action playbook that a FlyRank editor can use immediately:</p>
+    <!-- 7. Limitations -->
+    <div class="limits-box">
+        <h2 style="margin-top:0; border:none;">7. Limitations &amp; Honest Framing</h2>
+        <p>This is an observational decision-support tool, not a causal forecasting engine. We did not run an experiment, so we make no claim that refreshing a flagged page will cause its traffic to recover — only that the page shows the pattern of pages that currently capture clicks.</p>
+        <p><strong>Same-window feature/label overlap:</strong> <code>ga4_sessions</code> and <code>scroll_events</code> are measured in the same window as the <code>has_clicks</code> label. A page cannot easily register an organic GA4 session without a click having occurred first, so these features may partially echo the label rather than independently predict it. Our drop-feature test (Section 2) showed only a 0.2-point accuracy change when they were removed, which is reassuring but not conclusive — <code>gsc_impressions</code> and <code>gsc_avg_position</code> alone already carry most of the signal and could be masking a smaller circularity effect. Future work should test the model on a strictly earlier feature window predicting a strictly later label window.</p>
+        <p>The 3-tier action playbook (Section 8) has not been separately validated: only the underlying binary classifier was scored with grouped cross-validation. The Hold/Refresh/Expand thresholds are directional heuristics layered on top of a validated model, not a validated classifier in their own right.</p>
+        <p>The model was trained and evaluated on a single month's data (March 2026), with hyperparameters fixed by convention rather than searched (Section 4). We have not tested whether performance holds across seasons, algorithm updates, or other months, and we make no claim that it does. We also do not claim to have modeled or predicted Google's ranking algorithm — only observed associations between visibility signals and click behavior within this portfolio.</p>
+    </div>
+
+    <!-- 8. Ranked recommendations -->
+    <h2>8. Ranked Recommendations</h2>
+    <p>The final queue blends each page's out-of-fold model probability (70% weight) with a normalized visibility score (30% weight), aggregated to one row per page, then buckets pages into a 3-tier action playbook a FlyRank editor can use immediately. Every row carries a reason code and a confidence label (high/medium/low) derived from the model probability and impression volume:</p>
     <ol>
         <li><strong><code>REFRESH_FOR_CTR</code>:</strong> High impressions (&gt;1,000) at positions beyond 10 (page two or later, no upper cap). Action: Optimize meta descriptions and titles.</li>
         <li><strong><code>EXPAND_CONTENT</code>:</strong> Strong rank (Top 10) but low GA4 sessions (&lt;50). Action: Expand content depth and multimedia.</li>
         <li><strong><code>HOLD</code>:</strong> Everything else. Do not touch.</li>
     </ol>
+    <p class="note">The chart below shows the resulting distribution across the three actions on this sample, after aggregating to one row per page.</p>
 
-    <img src="playbook_actions_distribution.png" alt="Bar chart showing the distribution of playbook actions, with HOLD being the vast majority">
-    
-    <p><strong>Confidence &amp; Limits:</strong> The underlying binary classifier is validated with grouped cross-validation (Section 5); the 3-tier playbook rule itself has not been separately scored against ground truth, so its Hold/Refresh/Expand boundaries are directional heuristics, not a validated classifier. This is an observational decision-support tool, not a causal forecasting engine. It classifies contemporaneous visibility potential and does not explicitly forecast future time-series decay.</p>
+    <img src="playbook_actions_distribution.png" alt="Bar chart showing the distribution of playbook actions across REFRESH_FOR_CTR, EXPAND_CONTENT, and HOLD categories">
 
     <h3>Sample Triage Queue</h3>
+    <p class="note">Two representative rows from the top of the deduplicated queue (one row per page), showing both a REFRESH and an EXPAND recommendation:</p>
     <table>
         <thead>
             <tr>
                 <th>content_hash_id</th>
-                <th>max_impressions</th>
-                <th>avg_position</th>
-                <th>max_sessions</th>
+                <th>model_probability</th>
                 <th>recommended_action</th>
+                <th>reason_code</th>
+                <th>confidence</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td><code>...edeb93b7c4f</code></td>
-                <td>24,577</td>
-                <td>18.61</td>
-                <td>216</td>
-                <td><span style="color: #0f766e; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
+                <td><code>...f0cf40fe8a535f</code></td>
+                <td>0.921</td>
+                <td><span style="color: #0f766e; font-weight: 600;">2. EXPAND_CONTENT</span></td>
+                <td>HIGH_RANK_LOW_ENGAGEMENT|MODEL_HIGH_CONFIDENCE</td>
+                <td>high</td>
             </tr>
             <tr>
-                <td><code>...753806d7af3</code></td>
-                <td>15,522</td>
-                <td>14.39</td>
-                <td>63</td>
-                <td><span style="color: #0f766e; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
+                <td><code>...ec24c5cae91be7</code></td>
+                <td>0.922</td>
+                <td><span style="color: #b45309; font-weight: 600;">1. REFRESH_FOR_CTR</span></td>
+                <td>HIGH_VOL_LOW_RANK|MODEL_HIGH_CONFIDENCE</td>
+                <td>high</td>
             </tr>
         </tbody>
     </table>
+    <p class="note">Note on reading <code>MODEL_HIGH_CONFIDENCE</code>: this tag reflects the model's confidence that the page will register a click — it is independent of which action bucket the page falls into. A page can carry <code>MODEL_HIGH_CONFIDENCE</code> and still land in <code>HOLD</code> if its position and sessions are already strong; the tag informs the reviewer, it doesn't override the rule.</p>
 
-    <!-- 8. Reproducibility -->
-    <h2>8. Reproducibility</h2>
-    <p>This entire study is reproducible from the committed notebooks: the deterministic extraction query, the grouping logic, and the random seed (<code>random_state=42</code>, held constant across every model fit above) are all committed in the public Jupyter notebooks in the project repository.</p>
-    <p><strong>Repository:</strong> <a href="https://github.com/s-safwan/ml-internship-flyrank" target="_blank">github.com/s-safwan/ml-internship-flyrank</a></p>
+    <!-- 9. Reproducibility -->
+    <h2>9. Reproducibility</h2>
+    <div class="repro-box">
+        <p style="margin-top:0;"><strong>To reproduce:</strong> open <code>work/notebooks/capstone.ipynb</code> in Google Colab via the badge in the repository README, paste your own free Hugging Face read token when prompted (after requesting access to the gated dataset), then <strong>Runtime → Run all</strong>. Repeat for <code>work/notebooks/w07_action_playbook.ipynb</code> to regenerate the ranked queue.</p>
+        <p><strong>Infrastructure:</strong> Google Colab, free-tier CPU runtime, no GPU used. The full pipeline (data pull, 5-fold cross-validation, and queue export) completes in a few minutes end-to-end on this infrastructure — no specialized hardware is required to rerun this study.</p>
+        <p><strong>Training runs:</strong> 5 folds × 2 strategies (baseline, Random Forest) = 10 fits per full evaluation pass, plus 5 additional out-of-fold fits for the ranked-queue probabilities in Section 8.</p>
+        <p style="margin-bottom:0;"><strong>Seed:</strong> <code>random_state=42</code>, fixed across every model fit in this study.</p>
+    </div>
+    <p>This entire study is reproducible from the committed notebooks: the deterministic extraction query, the grouping logic, and the random seed are all committed in the public Jupyter notebooks in the project repository, including the leakage-check audit and the out-of-fold queue-building logic.</p>
+    <p><strong>Repository:</strong> <a href="https://github.com/s-safwan/ml-internship-flyrank" target="_blank">github.com/s-safwan/ml-internship-flyrank</a> </p>
 
-    <!-- 9. Acknowledgments & data credit -->
+    <!-- 10. Acknowledgments & data credit -->
     <footer>
-        <h2>9. Acknowledgments &amp; Data Credit</h2>
+        <h2>10. Acknowledgments &amp; Data Credit</h2>
         <p>Built on the FlyRank ML Internship dataset: <a href="https://flyrank.ai" target="_blank" rel="noopener noreferrer">https://flyrank.ai</a></p>
     </footer>
 </div>
